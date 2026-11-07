@@ -1,0 +1,97 @@
+#include <string>
+#include <ctime>
+#include <iostream>
+
+// ================= БАЗОВЫЙ КЛАСС =================
+class Message {
+protected:
+    std::string messageId;
+    std::string url;
+    std::string senderId;
+    std::time_t timestamp;
+    bool deleted;
+
+public:
+    Message(const std::string& id, const std::string& u,
+            const std::string& sender)
+        : messageId(id), url(u), senderId(sender),
+          timestamp(std::time(nullptr)), deleted(false) {}
+
+    virtual ~Message() = default;          // виртуальный деструктор!
+
+    // Общий для всех сообщений интерфейс
+    virtual std::string getPreview() const = 0;   // чисто виртуальный
+    std::string getUrl() const { return url; }
+    std::string getSenderId() const { return senderId; }
+    std::time_t getTimestamp() const { return timestamp; }
+
+    void markDeleted() { deleted = true; }
+    bool isDeleted() const { return deleted; }
+};
+
+// ================= ПОТОМОК 1: ФОТО =================
+class Photo : public Message {
+private:
+    bool hasMusic;
+    std::string trackId;     // пусто, если музыки нет
+
+public:
+    Photo(const std::string& id, const std::string& u,
+          const std::string& sender)
+        : Message(id, u, sender), hasMusic(false) {}
+
+    void applyMusic(const std::string& track) {
+        trackId = track;
+        hasMusic = true;
+    }
+    void removeMusic() {
+        trackId.clear();
+        hasMusic = false;
+    }
+
+    std::string getPreview() const override {
+        return hasMusic ? "Фото с музыкой" : "Фото";
+    }
+};
+
+// ================= ПОТОМОК 2: ВИДЕО =================
+class Video : public Message {
+private:
+    int duration;            // секунды, ≤ 30
+    bool isLipSync;
+    std::string trackId;
+
+public:
+    Video(const std::string& id, const std::string& u,
+          const std::string& sender, int dur)
+        : Message(id, u, sender), duration(dur), isLipSync(false) {
+        if (dur > 30) duration = 30;   // ограничение предметной области
+    }
+
+    void enableLipSync(const std::string& track) {
+        isLipSync = true;
+        trackId = track;
+    }
+    void disableLipSync() {
+        isLipSync = false;
+        trackId.clear();
+    }
+
+    std::string getPreview() const override {
+        return isLipSync ? "Липсинг" : "Видео";
+    }
+};
+
+// ================= ИСПОЛЬЗОВАНИЕ =================
+int main() {
+    Photo p("p1", "/media/p1.jpg", "u100");
+    p.applyMusic("track42");
+
+    Video v("v1", "/media/v1.mp4", "u100", 15);
+    v.enableLipSync("track42");
+
+    // Полиморфизм: единый контейнер для всех сообщений
+    Message* box[] = { &p, &v };
+    for (Message* m : box)
+        std::cout << m->getPreview() << " -> " << m->getUrl() << "\n";
+}
